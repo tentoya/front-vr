@@ -2,323 +2,656 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>VR Gallery</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VR Gallery Editor</title>
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <style>
-    body { margin: 0; }
+    :root {
+      --panel-bg: rgba(16, 18, 32, 0.82);
+      --panel-border: rgba(120, 140, 255, 0.25);
+      --accent: #6f8bff;
+      --text: #e8ebff;
+      --text-dim: #8b92b8;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, "Hiragino Sans", sans-serif; }
+
+    /* ---- 上部ツールバー ---- */
+    #toolbar {
+      position: fixed; top: 14px; left: 14px; z-index: 100;
+      display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+      background: var(--panel-bg); backdrop-filter: blur(12px);
+      border: 1px solid var(--panel-border); border-radius: 14px;
+      padding: 10px 12px; max-width: calc(100vw - 28px);
+    }
+    #toolbar .brand {
+      color: var(--text); font-weight: 700; font-size: 14px;
+      letter-spacing: 0.04em; margin-right: 4px;
+    }
+    .btn {
+      background: rgba(111, 139, 255, 0.16); color: var(--text);
+      border: 1px solid var(--panel-border); border-radius: 9px;
+      padding: 7px 13px; font-size: 13px; cursor: pointer;
+      transition: background 0.15s; white-space: nowrap;
+    }
+    .btn:hover { background: rgba(111, 139, 255, 0.32); }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn.danger { background: rgba(255, 90, 110, 0.2); border-color: rgba(255,90,110,0.4); }
+    .btn.danger:hover { background: rgba(255, 90, 110, 0.4); }
+    .divider { width: 1px; height: 22px; background: var(--panel-border); margin: 0 2px; }
+
+    /* ---- 右パネル（選択時） ---- */
+    #inspector {
+      position: fixed; top: 14px; right: 14px; z-index: 100;
+      width: 230px; display: none;
+      background: var(--panel-bg); backdrop-filter: blur(12px);
+      border: 1px solid var(--panel-border); border-radius: 14px;
+      padding: 14px; color: var(--text);
+    }
+    #inspector.show { display: block; }
+    #inspector h3 {
+      margin: 0 0 10px; font-size: 13px; letter-spacing: 0.04em;
+      display: flex; align-items: center; gap: 6px;
+    }
+    #inspector h3 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+    .field { margin-bottom: 12px; }
+    .field label {
+      display: flex; justify-content: space-between;
+      font-size: 11px; color: var(--text-dim); margin-bottom: 4px;
+    }
+    .field label .val { color: var(--text); }
+    .field input[type=range] { width: 100%; accent-color: var(--accent); }
+    .insp-actions { display: flex; gap: 8px; margin-top: 4px; }
+    .insp-actions .btn { flex: 1; text-align: center; padding: 8px 0; }
+
+    /* ---- 下部ヒント ---- */
     #hint {
-      position: fixed; bottom: 16px; left: 50%;
-      transform: translateX(-50%);
-      display: flex; gap: 10px; z-index: 100; pointer-events: none;
+      position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%);
+      z-index: 90; display: flex; gap: 8px; pointer-events: none; flex-wrap: wrap;
+      justify-content: center; max-width: 92vw;
     }
     .chip {
-      background: rgba(255,255,255,0.1); backdrop-filter: blur(8px);
-      border: 1px solid rgba(255,255,255,0.2); color: #fff;
-      padding: 7px 16px; border-radius: 999px;
-      font-family: sans-serif; font-size: 13px;
+      background: var(--panel-bg); backdrop-filter: blur(8px);
+      border: 1px solid var(--panel-border); color: var(--text-dim);
+      padding: 6px 13px; border-radius: 999px; font-size: 12px;
     }
+
+    /* ---- ドロップオーバーレイ ---- */
+    #drop {
+      position: fixed; inset: 0; z-index: 200; display: none;
+      align-items: center; justify-content: center;
+      background: rgba(8, 10, 22, 0.85); backdrop-filter: blur(6px);
+      border: 3px dashed var(--accent);
+    }
+    #drop.show { display: flex; }
+    #drop .inner { text-align: center; color: var(--text); }
+    #drop .big { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+    #drop .sub { color: var(--text-dim); font-size: 14px; }
+
+    /* ---- トースト ---- */
+    #toast {
+      position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%);
+      z-index: 300; background: var(--accent); color: #fff;
+      padding: 10px 20px; border-radius: 10px; font-size: 13px;
+      opacity: 0; transition: opacity 0.3s; pointer-events: none;
+    }
+    #toast.show { opacity: 1; }
   </style>
 </head>
 <body>
 
-<div id="hint">
-  <span class="chip">WASDで移動</span>
-  <span class="chip">マウスで視点変更</span>
-  <span class="chip">VRゴーグル対応</span>
+<!-- ===== UI ===== -->
+<div id="toolbar">
+  <span class="brand">⬡ VR GALLERY</span>
+  <button class="btn primary" id="btn-upload">＋ 3Dモデル (.glb)</button>
+  <input type="file" id="file-input" accept=".glb,.gltf" multiple style="display:none" />
+  <div class="divider"></div>
+  <button class="btn" id="btn-add-box">■ 箱</button>
+  <button class="btn" id="btn-add-sphere">● 球</button>
+  <button class="btn" id="btn-add-torus">◯ 輪</button>
+  <div class="divider"></div>
+  <button class="btn danger" id="btn-clear">全消去</button>
 </div>
 
-<a-scene
-  background="color: #060610"
-  fog="type: exponential; color: #060610; density: 0.025"
-  vr-mode-ui="enabled: true"
->
+<div id="inspector">
+  <h3><span class="dot"></span><span id="insp-name">オブジェクト</span></h3>
+  <div class="field">
+    <label>高さ (Y) <span class="val" id="val-y">0.0</span></label>
+    <input type="range" id="ctl-y" min="0" max="5" step="0.05" value="0" />
+  </div>
+  <div class="field">
+    <label>回転 (Y) <span class="val" id="val-rot">0°</span></label>
+    <input type="range" id="ctl-rot" min="-180" max="180" step="1" value="0" />
+  </div>
+  <div class="field">
+    <label>大きさ <span class="val" id="val-scale">1.00×</span></label>
+    <input type="range" id="ctl-scale" min="0.05" max="5" step="0.01" value="1" />
+  </div>
+  <div class="insp-actions">
+    <button class="btn" id="btn-dup">複製</button>
+    <button class="btn danger" id="btn-del">削除</button>
+  </div>
+</div>
 
-  <!-- ========== カメラ（入口前） ========== -->
-  <a-entity position="0 0 9">
-    <a-camera look-controls wasd-controls="acceleration: 30">
-      <a-cursor color="#ffffff" opacity="0.6"></a-cursor>
+<div id="hint">
+  <span class="chip">WASD / 矢印キーで移動</span>
+  <span class="chip">何もない所をドラッグで視点変更</span>
+  <span class="chip">モデルをクリックで選択 → ドラッグで床移動</span>
+</div>
+
+<div id="drop"><div class="inner">
+  <div class="big">ここにドロップ</div>
+  <div class="sub">.glb / .gltf ファイルをシーンに配置します</div>
+</div></div>
+
+<div id="toast"></div>
+
+<!-- ===== 3D シーン ===== -->
+<a-scene
+  background="color: #070912"
+  fog="type: exponential; color: #070912; density: 0.022"
+  vr-mode-ui="enabled: true"
+  editor
+>
+  <!-- カメラ（入口） -->
+  <a-entity id="rig" position="0 0 7">
+    <a-camera look-controls="reverseMouseDrag: false" wasd-controls="acceleration: 35; fly: false">
     </a-camera>
   </a-entity>
 
-  <!-- ========== 環境光 ========== -->
-  <a-light type="ambient" color="#080820" intensity="1"></a-light>
+  <!-- 環境光 -->
+  <a-light type="ambient" color="#23263f" intensity="1.1"></a-light>
+  <a-light type="directional" color="#aab4ff" intensity="0.7" position="3 8 4"></a-light>
+  <a-light type="point" color="#7788ff" intensity="2.4" position="0 5.5 -4" distance="18" decay="1.4"></a-light>
+  <a-light type="point" color="#ff6aa8" intensity="1.4" position="-7 4 -8" distance="14" decay="2"></a-light>
+  <a-light type="point" color="#44ffd0" intensity="1.4" position="7 4 -8" distance="14" decay="2"></a-light>
 
-  <!-- ========== 床（全体） ========== -->
-  <a-box position="0 -0.05 -12" width="8" depth="42" height="0.1"
-    material="color: #0c0c1c; roughness: 0.2; metalness: 0.6"></a-box>
-
+  <!-- ===== 展示室 ===== -->
+  <!-- 床 -->
+  <a-box id="floor" position="0 -0.05 -6" width="18" depth="28" height="0.1"
+    material="color: #0d0f1e; roughness: 0.25; metalness: 0.6"></a-box>
   <!-- 床グリッド -->
-  <a-entity position="0 0.01 -12" geometry="primitive: plane; width: 8; height: 42; segmentsWidth: 16; segmentsHeight: 84"
+  <a-entity position="0 0.011 -6" rotation="-90 0 0"
+    geometry="primitive: plane; width: 18; height: 28; segmentsWidth: 18; segmentsHeight: 28"
+    material="color: #4a5cff; opacity: 0.07; transparent: true; wireframe: true"></a-entity>
+
+  <!-- 天井 -->
+  <a-box position="0 5.5 -6" width="18" depth="28" height="0.1"
+    material="color: #080a16; roughness: 1"></a-box>
+  <!-- 壁（左右奥） -->
+  <a-box position="-9 2.7 -6" width="0.1" depth="28" height="5.5"
+    material="color: #0f1126; roughness: 0.8"></a-box>
+  <a-box position="9 2.7 -6" width="0.1" depth="28" height="5.5"
+    material="color: #0f1126; roughness: 0.8"></a-box>
+  <a-box position="0 2.7 -20" width="18" depth="0.1" height="5.5"
+    material="color: #0f1126; roughness: 0.8"></a-box>
+  <!-- 入口側の上枠だけ（開口は通れる） -->
+  <a-box position="0 5 8" width="18" depth="0.1" height="1"
+    material="color: #0f1126; roughness: 0.8"></a-box>
+
+  <!-- 天井ライン -->
+  <a-box position="0 5.46 -3" width="1" depth="12" height="0.02"
+    material="color: #aab4ff; emissive: #5566ff; emissiveIntensity: 0.9"></a-box>
+  <a-box position="0 5.46 -14" width="1" depth="8" height="0.02"
+    material="color: #aab4ff; emissive: #5566ff; emissiveIntensity: 0.9"></a-box>
+
+  <!-- 幅木・モールディング -->
+  <a-box position="-8.96 0.12 -6" width="0.06" depth="28" height="0.24"
+    material="color: #2a2f5a; metalness: 0.7"></a-box>
+  <a-box position="8.96 0.12 -6" width="0.06" depth="28" height="0.24"
+    material="color: #2a2f5a; metalness: 0.7"></a-box>
+
+  <!-- タイトル -->
+  <a-text value="MY GALLERY" position="0 4.4 -19.9"
+    align="center" color="#ccd2ff" width="10" opacity="0.85"></a-text>
+
+  <!-- 中央ステージ（配置ガイド） -->
+  <a-cylinder position="0 0.03 -6" radius="2.4" height="0.06"
+    material="color: #1a1f44; roughness: 0.2; metalness: 0.8; opacity: 0.6; transparent: true"></a-cylinder>
+  <a-ring position="0 0.05 -6" radius-inner="2.35" radius-outer="2.5" rotation="-90 0 0"
+    material="color: #6f8bff; emissive: #6f8bff; emissiveIntensity: 0.5; opacity: 0.6; transparent: true"></a-ring>
+
+  <!-- 編集対象を入れるコンテナ -->
+  <a-entity id="content"></a-entity>
+
+  <!-- 選択ハイライト用リング -->
+  <a-ring id="select-ring" visible="false" radius-inner="0.55" radius-outer="0.68"
     rotation="-90 0 0"
-    material="color: #3344ff; opacity: 0.06; transparent: true; wireframe: true">
-  </a-entity>
-
-  <!-- ========== 入口ポータル（z=4） ========== -->
-  <!-- 左ピラー -->
-  <a-box position="-3 1.75 4" width="0.4" depth="0.4" height="3.5"
-    material="color: #1a1a3a; roughness: 0.4; metalness: 0.8"></a-box>
-  <!-- 右ピラー -->
-  <a-box position="3 1.75 4" width="0.4" depth="0.4" height="3.5"
-    material="color: #1a1a3a; roughness: 0.4; metalness: 0.8"></a-box>
-  <!-- 上梁 -->
-  <a-box position="0 3.6 4" width="6.4" depth="0.4" height="0.3"
-    material="color: #1a1a3a; roughness: 0.4; metalness: 0.8"></a-box>
-  <!-- ピラー発光ライン -->
-  <a-box position="-2.79 1.75 3.82" width="0.04" depth="0.04" height="3"
-    material="color: #99aaff; emissive: #5566ff; emissiveIntensity: 1"></a-box>
-  <a-box position="2.79 1.75 3.82" width="0.04" depth="0.04" height="3"
-    material="color: #99aaff; emissive: #5566ff; emissiveIntensity: 1"></a-box>
-  <a-light type="point" color="#4455ff" intensity="2" position="0 3 4" distance="6" decay="2"></a-light>
-  <!-- タイトル -->
-  <a-text value="GEOMETRY GALLERY" position="0 3.1 3.85"
-    align="center" color="#ccccff" width="9" opacity="1"></a-text>
-
-  <!-- ========== 入口廊下（z: 4 → -6 / 幅6） ========== -->
-  <!-- 天井 -->
-  <a-box position="0 3.5 -1" width="6" depth="10" height="0.1"
-    material="color: #090916; roughness: 1"></a-box>
-  <!-- 左壁 -->
-  <a-box position="-3 1.75 -1" width="0.1" depth="10" height="3.5"
-    material="color: #10102a; roughness: 0.8"></a-box>
-  <!-- 右壁 -->
-  <a-box position="3 1.75 -1" width="0.1" depth="10" height="3.5"
-    material="color: #10102a; roughness: 0.8"></a-box>
-  <!-- 廊下天井ライト -->
-  <a-box position="0 3.46 -1" width="0.7" depth="7" height="0.02"
-    material="color: #aaaaff; emissive: #5566ff; emissiveIntensity: 0.9"></a-box>
-  <a-light type="point" color="#6677ff" intensity="2" position="0 3 -1" distance="9" decay="1.5"></a-light>
-
-  <!-- ========== アーチ（廊下→メインホール）z=-6 ========== -->
-  <a-box position="-3.5 1.75 -6" width="1" depth="0.2" height="3.6"
-    material="color: #1a1a3a; metalness: 0.7"></a-box>
-  <a-box position="3.5 1.75 -6" width="1" depth="0.2" height="3.6"
-    material="color: #1a1a3a; metalness: 0.7"></a-box>
-  <a-box position="0 3.7 -6" width="8" depth="0.2" height="0.6"
-    material="color: #1a1a3a; metalness: 0.7"></a-box>
-
-  <!-- ========== メインギャラリーホール（z: -6 → -22 / 幅8） ========== -->
-  <!-- 天井 -->
-  <a-box position="0 4 -14" width="8" depth="16" height="0.1"
-    material="color: #090916; roughness: 1"></a-box>
-  <!-- 左壁 -->
-  <a-box position="-4 2 -14" width="0.1" depth="16" height="4"
-    material="color: #0f0f28; roughness: 0.8"></a-box>
-  <!-- 右壁 -->
-  <a-box position="4 2 -14" width="0.1" depth="16" height="4"
-    material="color: #0f0f28; roughness: 0.8"></a-box>
-  <!-- 幅木（左・右） -->
-  <a-box position="-3.96 0.1 -14" width="0.06" depth="16" height="0.2"
-    material="color: #2a2a5a; metalness: 0.7"></a-box>
-  <a-box position="3.96 0.1 -14" width="0.06" depth="16" height="0.2"
-    material="color: #2a2a5a; metalness: 0.7"></a-box>
-  <!-- 天井モールディング（左・右） -->
-  <a-box position="-3.96 3.9 -14" width="0.06" depth="16" height="0.15"
-    material="color: #2a2a5a; metalness: 0.7"></a-box>
-  <a-box position="3.96 3.9 -14" width="0.06" depth="16" height="0.15"
-    material="color: #2a2a5a; metalness: 0.7"></a-box>
-
-  <!-- 天井ライン × 3 -->
-  <a-box position="0 3.96 -9" width="0.8" depth="4" height="0.02"
-    material="color: #aaaaff; emissive: #5566ff; emissiveIntensity: 0.9"></a-box>
-  <a-light type="point" color="#7788ff" intensity="3" position="0 3.5 -9" distance="10" decay="1.5"></a-light>
-
-  <a-box position="0 3.96 -14" width="0.8" depth="4" height="0.02"
-    material="color: #aaaaff; emissive: #5566ff; emissiveIntensity: 0.9"></a-box>
-  <a-light type="point" color="#7788ff" intensity="3" position="0 3.5 -14" distance="10" decay="1.5"></a-light>
-
-  <a-box position="0 3.96 -19" width="0.8" depth="4" height="0.02"
-    material="color: #aaaaff; emissive: #5566ff; emissiveIntensity: 0.9"></a-box>
-  <a-light type="point" color="#7788ff" intensity="3" position="0 3.5 -19" distance="10" decay="1.5"></a-light>
-
-  <!-- ========== 左壁 アートワーク ========== -->
-
-  <!-- No.1 Azure Dreams (z=-9) -->
-  <a-entity position="-3.93 2 -9">
-    <a-box width="0.06" depth="2.5" height="1.9"
-      material="color: #1e1e44; roughness: 0.4; metalness: 0.6"></a-box>
-    <a-box width="0.04" depth="2.1" height="1.5" position="0.01 0 0"
-      material="color: #00114a; emissive: #000a2e; roughness: 0.1; metalness: 0.3"></a-box>
-    <a-sphere position="0.03 0.1 0" radius="0.35"
-      material="color: #4488ff; emissive: #1133cc; opacity: 0.55; transparent: true"
-      animation="property: scale; to: 1.6 1.6 1.6; dir: alternate; loop: true; dur: 2600; easing: easeInOutSine">
-    </a-sphere>
-    <a-light type="point" color="#3366ff" intensity="4" position="1.5 1.5 0" distance="4" decay="2"></a-light>
-    <a-text rotation="0 90 0" value="No.1  AZURE DREAMS" position="0.08 -1.15 0"
-      color="#6699ff" width="4" align="center" opacity="0.9"></a-text>
-  </a-entity>
-
-  <!-- No.2 Crimson Reverie (z=-14) -->
-  <a-entity position="-3.93 2 -14">
-    <a-box width="0.06" depth="2.5" height="1.9"
-      material="color: #44162e; roughness: 0.4; metalness: 0.6"></a-box>
-    <a-box width="0.04" depth="2.1" height="1.5" position="0.01 0 0"
-      material="color: #550020; emissive: #330010; roughness: 0.1; metalness: 0.3"></a-box>
-    <a-torus position="0.03 0 0" radius="0.4" radius-tubular="0.06"
-      material="color: #ff44aa; emissive: #cc1166; opacity: 0.7; transparent: true"
-      animation="property: rotation; to: 0 0 360; loop: true; dur: 3000; easing: linear">
-    </a-torus>
-    <a-light type="point" color="#ff3399" intensity="4" position="1.5 1.5 0" distance="4" decay="2"></a-light>
-    <a-text rotation="0 90 0" value="No.2  CRIMSON REVERIE" position="0.08 -1.15 0"
-      color="#ff66bb" width="4" align="center" opacity="0.9"></a-text>
-  </a-entity>
-
-  <!-- No.3 Ocean Depth (z=-19) -->
-  <a-entity position="-3.93 2 -19">
-    <a-box width="0.06" depth="2.5" height="1.9"
-      material="color: #14363a; roughness: 0.4; metalness: 0.6"></a-box>
-    <a-box width="0.04" depth="2.1" height="1.5" position="0.01 0 0"
-      material="color: #004444; emissive: #002222; roughness: 0.1; metalness: 0.3"></a-box>
-    <a-octahedron position="0.03 0 0" radius="0.4"
-      material="color: #44ffcc; emissive: #22aa88; opacity: 0.65; transparent: true"
-      animation="property: rotation; to: 360 360 0; loop: true; dur: 4000; easing: linear">
-    </a-octahedron>
-    <a-light type="point" color="#33ffcc" intensity="4" position="1.5 1.5 0" distance="4" decay="2"></a-light>
-    <a-text rotation="0 90 0" value="No.3  OCEAN DEPTH" position="0.08 -1.15 0"
-      color="#55ffdd" width="4" align="center" opacity="0.9"></a-text>
-  </a-entity>
-
-  <!-- ========== 右壁 アートワーク ========== -->
-
-  <!-- No.4 Golden Hour (z=-9) -->
-  <a-entity position="3.93 2 -9">
-    <a-box width="0.06" depth="2.5" height="1.9"
-      material="color: #3e2a08; roughness: 0.4; metalness: 0.6"></a-box>
-    <a-box width="0.04" depth="2.1" height="1.5" position="-0.01 0 0"
-      material="color: #553300; emissive: #332200; roughness: 0.1; metalness: 0.5"></a-box>
-    <a-cone position="-0.03 -0.1 0" radius-bottom="0.35" height="0.7"
-      material="color: #ffcc33; emissive: #cc8800; opacity: 0.7; transparent: true"
-      animation="property: rotation; to: 0 360 0; loop: true; dur: 5000; easing: linear">
-    </a-cone>
-    <a-light type="point" color="#ffbb33" intensity="4" position="-1.5 1.5 0" distance="4" decay="2"></a-light>
-    <a-text rotation="0 -90 0" value="No.4  GOLDEN HOUR" position="-0.08 -1.15 0"
-      color="#ffdd55" width="4" align="center" opacity="0.9"></a-text>
-  </a-entity>
-
-  <!-- No.5 Violet Dusk (z=-14) -->
-  <a-entity position="3.93 2 -14">
-    <a-box width="0.06" depth="2.5" height="1.9"
-      material="color: #2a0a40; roughness: 0.4; metalness: 0.6"></a-box>
-    <a-box width="0.04" depth="2.1" height="1.5" position="-0.01 0 0"
-      material="color: #330055; emissive: #1a0033; roughness: 0.1; metalness: 0.3"></a-box>
-    <a-icosahedron position="-0.03 0 0" radius="0.38"
-      material="color: #cc44ff; emissive: #8811cc; opacity: 0.65; transparent: true"
-      animation="property: rotation; to: 360 0 360; loop: true; dur: 6000; easing: linear">
-    </a-icosahedron>
-    <a-light type="point" color="#bb33ff" intensity="4" position="-1.5 1.5 0" distance="4" decay="2"></a-light>
-    <a-text rotation="0 -90 0" value="No.5  VIOLET DUSK" position="-0.08 -1.15 0"
-      color="#dd66ff" width="4" align="center" opacity="0.9"></a-text>
-  </a-entity>
-
-  <!-- No.6 Forest Echo (z=-19) -->
-  <a-entity position="3.93 2 -19">
-    <a-box width="0.06" depth="2.5" height="1.9"
-      material="color: #143020; roughness: 0.4; metalness: 0.6"></a-box>
-    <a-box width="0.04" depth="2.1" height="1.5" position="-0.01 0 0"
-      material="color: #003322; emissive: #001a11; roughness: 0.1; metalness: 0.3"></a-box>
-    <a-dodecahedron position="-0.03 0 0" radius="0.38"
-      material="color: #44ff88; emissive: #22cc66; opacity: 0.6; transparent: true"
-      animation="property: rotation; to: -360 360 0; loop: true; dur: 7000; easing: linear">
-    </a-dodecahedron>
-    <a-light type="point" color="#33ff77" intensity="4" position="-1.5 1.5 0" distance="4" decay="2"></a-light>
-    <a-text rotation="0 -90 0" value="No.6  FOREST ECHO" position="-0.08 -1.15 0"
-      color="#66ffaa" width="4" align="center" opacity="0.9"></a-text>
-  </a-entity>
-
-  <!-- ========== アーチ（メインホール→エンドルーム）z=-22 ========== -->
-  <!-- 左ブロック（x: -7 to -3） -->
-  <a-box position="-5 2.5 -22" width="4" depth="0.2" height="5"
-    material="color: #1a1a3a; metalness: 0.7"></a-box>
-  <!-- 右ブロック（x: 3 to 7） -->
-  <a-box position="5 2.5 -22" width="4" depth="0.2" height="5"
-    material="color: #1a1a3a; metalness: 0.7"></a-box>
-  <!-- 上梁（開口部上） -->
-  <a-box position="0 4.5 -22" width="6" depth="0.2" height="1"
-    material="color: #1a1a3a; metalness: 0.7"></a-box>
-  <!-- アーチ装飾ライン -->
-  <a-box position="-2.98 2.5 -21.9" width="0.05" depth="0.05" height="4"
-    material="color: #ffcc88; emissive: #ffaa33; emissiveIntensity: 1"></a-box>
-  <a-box position="2.98 2.5 -21.9" width="0.05" depth="0.05" height="4"
-    material="color: #ffcc88; emissive: #ffaa33; emissiveIntensity: 1"></a-box>
-  <a-light type="point" color="#ffaa44" intensity="2" position="0 4 -22" distance="5" decay="2"></a-light>
-
-  <!-- ========== エンドルーム（z: -22 → -34 / 幅14） ========== -->
-  <!-- 天井（高め: y=5.5） -->
-  <a-box position="0 5.5 -28" width="14" depth="12" height="0.1"
-    material="color: #07071a; roughness: 1"></a-box>
-  <!-- 左壁 -->
-  <a-box position="-7 2.75 -28" width="0.1" depth="12" height="5.5"
-    material="color: #0d0d22; roughness: 0.7"></a-box>
-  <!-- 右壁 -->
-  <a-box position="7 2.75 -28" width="0.1" depth="12" height="5.5"
-    material="color: #0d0d22; roughness: 0.7"></a-box>
-  <!-- 奥壁 -->
-  <a-box position="0 2.75 -34" width="14" depth="0.1" height="5.5"
-    material="color: #0d0d22; roughness: 0.7"></a-box>
-  <!-- 側壁床 -->
-  <a-box position="0 -0.05 -28" width="14" depth="12" height="0.1"
-    material="color: #0c0c1c; roughness: 0.15; metalness: 0.7"></a-box>
-
-  <!-- エンドルーム照明 -->
-  <a-light type="point" color="#ffffff" intensity="5" position="0 5 -28" distance="20" decay="1"></a-light>
-  <a-light type="point" color="#8844ff" intensity="2.5" position="-5 4 -26" distance="10" decay="2"></a-light>
-  <a-light type="point" color="#ff6633" intensity="2.5" position="5 4 -26" distance="10" decay="2"></a-light>
-  <a-light type="point" color="#44aaff" intensity="2" position="0 4 -33" distance="10" decay="2"></a-light>
-
-  <!-- 天井リング -->
-  <a-torus position="0 5.4 -28" radius="3.5" radius-tubular="0.05"
-    material="color: #ffffff; emissive: #aaaaff; emissiveIntensity: 0.6"
-    rotation="90 0 0"
-    animation="property: rotation; from: 90 0 0; to: 90 360 0; loop: true; dur: 20000; easing: linear">
-  </a-torus>
-
-  <!-- ===== センターピース: PRIMA STELLA ===== -->
-  <!-- 台座 -->
-  <a-cylinder position="0 0.9 -29" radius="0.9" height="1.8"
-    material="color: #16163a; roughness: 0.2; metalness: 0.9"></a-cylinder>
-  <a-cylinder position="0 1.85 -29" radius="1.1" height="0.1"
-    material="color: #2a2a5a; roughness: 0.1; metalness: 1"></a-cylinder>
-  <!-- 外側: 回転ドデカヘドロン -->
-  <a-entity position="0 3.6 -29"
-    animation="property: rotation; to: 0 360 0; loop: true; dur: 12000; easing: linear">
-    <a-dodecahedron radius="1.4"
-      material="color: #ffffff; roughness: 0; metalness: 1; emissive: #221133; opacity: 0.85; transparent: true">
-    </a-dodecahedron>
-  </a-entity>
-  <!-- 内側: 逆回転オクタヘドロン -->
-  <a-entity position="0 3.6 -29"
-    animation="property: rotation; to: -360 180 360; loop: true; dur: 8000; easing: linear">
-    <a-octahedron radius="0.65"
-      material="color: #99aaff; roughness: 0; metalness: 1; emissive: #334499">
-    </a-octahedron>
-  </a-entity>
-  <!-- タイトル -->
-  <a-text value="PRIMA STELLA" position="0 1.78 -27.5"
-    align="center" color="#ffffff" width="6" opacity="1"></a-text>
-
-  <!-- ===== サイド彫刻（左） ===== -->
-  <a-cylinder position="-5 0.75 -27" radius="0.5" height="1.5"
-    material="color: #16162e; roughness: 0.3; metalness: 0.8"></a-cylinder>
-  <a-entity position="-5 2.1 -27"
-    animation="property: rotation; to: 360 0 720; loop: true; dur: 9000; easing: linear">
-    <a-torus radius="0.75" radius-tubular="0.13"
-      material="color: #ff6644; roughness: 0.05; metalness: 0.95; emissive: #441100">
-    </a-torus>
-  </a-entity>
-  <a-text value="EMBER" position="-5 1.0 -26.2"
-    align="center" color="#ff8866" width="3.5" opacity="0.9"></a-text>
-
-  <!-- ===== サイド彫刻（右） ===== -->
-  <a-cylinder position="5 0.75 -27" radius="0.5" height="1.5"
-    material="color: #16162e; roughness: 0.3; metalness: 0.8"></a-cylinder>
-  <a-entity position="5 2.1 -27"
-    animation="property: rotation; to: -360 360 0; loop: true; dur: 11000; easing: linear">
-    <a-icosahedron radius="0.75"
-      material="color: #44aaff; roughness: 0.05; metalness: 0.95; emissive: #001144">
-    </a-icosahedron>
-  </a-entity>
-  <a-text value="GLACIER" position="5 1.0 -26.2"
-    align="center" color="#66bbff" width="3.5" opacity="0.9"></a-text>
-
+    material="color: #ffd166; emissive: #ffd166; emissiveIntensity: 0.8; side: double; opacity: 0.9; transparent: true"
+    animation="property: rotation; from: -90 0 0; to: -90 0 360; loop: true; dur: 4000; easing: linear"></a-ring>
 </a-scene>
+
+<script>
+/* =====================================================================
+   IndexedDB: モデルバイナリ(models) と 配置データ(scene) を保存
+   ===================================================================== */
+const DB_NAME = 'vr-gallery';
+const DB_VER = 1;
+let _db = null;
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    if (_db) return resolve(_db);
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('models')) db.createObjectStore('models');
+      if (!db.objectStoreNames.contains('scene')) db.createObjectStore('scene');
+    };
+    req.onsuccess = () => { _db = req.result; resolve(_db); };
+    req.onerror = () => reject(req.error);
+  });
+}
+async function idbPut(store, key, val) {
+  const db = await openDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(store, 'readwrite');
+    tx.objectStore(store).put(val, key);
+    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+  });
+}
+async function idbGet(store, key) {
+  const db = await openDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(store, 'readonly');
+    const r = tx.objectStore(store).get(key);
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+}
+async function idbDel(store, key) {
+  const db = await openDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(store, 'readwrite');
+    tx.objectStore(store).delete(key);
+    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+  });
+}
+async function idbClear(store) {
+  const db = await openDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(store, 'readwrite');
+    tx.objectStore(store).clear();
+    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+  });
+}
+
+/* =====================================================================
+   A-Frame エディタコンポーネント
+   ===================================================================== */
+AFRAME.registerComponent('editor', {
+  init() {
+    this.THREE = AFRAME.THREE;
+    this.sceneEl = this.el;
+    this.contentEl = document.querySelector('#content');
+    this.cameraEl = document.querySelector('a-camera');
+    this.lookControls = null;
+    this.selectRing = document.querySelector('#select-ring');
+
+    this.items = [];           // {id, el, source, position, rotation, scale}
+    this.selected = null;      // item
+    this.dragging = false;
+    this.downPos = { x: 0, y: 0 };
+    this.moved = false;
+
+    this.raycaster = new this.THREE.Raycaster();
+    this.mouse = new this.THREE.Vector2();
+    this.boxHelper = null;
+
+    this.canvas = this.sceneEl.canvas || this.sceneEl.renderer.domElement;
+    this.bindUI();
+    this.bindCanvas();
+
+    // シーン復元
+    this.el.sceneEl.addEventListener('loaded', () => {
+      this.lookControls = this.cameraEl.components['look-controls'];
+      this.restore();
+    });
+  },
+
+  /* ---------- UI バインド ---------- */
+  bindUI() {
+    const $ = (s) => document.querySelector(s);
+
+    $('#btn-upload').onclick = () => $('#file-input').click();
+    $('#file-input').onchange = (e) => {
+      [...e.target.files].forEach((f) => this.handleFile(f));
+      e.target.value = '';
+    };
+
+    $('#btn-add-box').onclick = () =>
+      this.addItem({ kind: 'primitive', shape: 'box', color: this.randColor() });
+    $('#btn-add-sphere').onclick = () =>
+      this.addItem({ kind: 'primitive', shape: 'sphere', color: this.randColor() });
+    $('#btn-add-torus').onclick = () =>
+      this.addItem({ kind: 'primitive', shape: 'torus', color: this.randColor() });
+
+    $('#btn-clear').onclick = () => this.clearAll();
+    $('#btn-del').onclick = () => this.deleteSelected();
+    $('#btn-dup').onclick = () => this.duplicateSelected();
+
+    // インスペクタのスライダー
+    $('#ctl-y').oninput = (e) => this.updateSelected('y', parseFloat(e.target.value));
+    $('#ctl-rot').oninput = (e) => this.updateSelected('rot', parseFloat(e.target.value));
+    $('#ctl-scale').oninput = (e) => this.updateSelected('scale', parseFloat(e.target.value));
+
+    // ドラッグ＆ドロップ
+    const drop = $('#drop');
+    let dragDepth = 0;
+    window.addEventListener('dragenter', (e) => {
+      e.preventDefault(); dragDepth++; drop.classList.add('show');
+    });
+    window.addEventListener('dragover', (e) => e.preventDefault());
+    window.addEventListener('dragleave', (e) => {
+      dragDepth--; if (dragDepth <= 0) { dragDepth = 0; drop.classList.remove('show'); }
+    });
+    window.addEventListener('drop', (e) => {
+      e.preventDefault(); dragDepth = 0; drop.classList.remove('show');
+      [...e.dataTransfer.files].forEach((f) => this.handleFile(f));
+    });
+
+    // Deleteキー
+    window.addEventListener('keydown', (e) => {
+      if ((e.key === 'Delete' || e.key === 'Backspace') && this.selected
+          && document.activeElement.tagName !== 'INPUT') {
+        this.deleteSelected();
+      }
+      if (e.key === 'Escape') this.deselect();
+    });
+  },
+
+  /* ---------- キャンバスのマウス操作 ---------- */
+  bindCanvas() {
+    const c = this.canvas;
+    c.addEventListener('mousedown', (e) => this.onDown(e));
+    window.addEventListener('mousemove', (e) => this.onMove(e));
+    window.addEventListener('mouseup', () => this.onUp());
+  },
+
+  setMouse(e) {
+    const r = this.canvas.getBoundingClientRect();
+    this.mouse.x = ((e.clientX - r.left) / r.width) * 2 - 1;
+    this.mouse.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+  },
+
+  onDown(e) {
+    if (e.button !== 0) return;
+    this.setMouse(e);
+    this.downPos = { x: e.clientX, y: e.clientY };
+    this.moved = false;
+
+    const cam = this.cameraEl.getObject3D('camera');
+    this.raycaster.setFromCamera(this.mouse, cam);
+
+    // 編集対象との交差を判定
+    const roots = this.items.map((it) => it.el.object3D).filter(Boolean);
+    const hits = this.raycaster.intersectObjects(roots, true);
+
+    if (hits.length) {
+      // どの item か特定
+      let obj = hits[0].object;
+      const item = this.items.find((it) => this.isDescendant(it.el.object3D, obj));
+      if (item) {
+        this.select(item);
+        this.dragging = true;
+        if (this.lookControls) this.cameraEl.setAttribute('look-controls', 'enabled', false);
+      }
+    }
+  },
+
+  onMove(e) {
+    if (Math.abs(e.clientX - this.downPos.x) + Math.abs(e.clientY - this.downPos.y) > 3) {
+      this.moved = true;
+    }
+    if (!this.dragging || !this.selected) return;
+    this.setMouse(e);
+    const cam = this.cameraEl.getObject3D('camera');
+    this.raycaster.setFromCamera(this.mouse, cam);
+
+    // 現在の高さの水平面と交差させ XZ を決定
+    const y = this.selected.position[1];
+    const plane = new this.THREE.Plane(new this.THREE.Vector3(0, 1, 0), -y);
+    const pt = new this.THREE.Vector3();
+    if (this.raycaster.ray.intersectPlane(plane, pt)) {
+      // 床の範囲内にクランプ
+      pt.x = Math.max(-8.5, Math.min(8.5, pt.x));
+      pt.z = Math.max(-19.5, Math.min(7.5, pt.z));
+      this.selected.position[0] = pt.x;
+      this.selected.position[2] = pt.z;
+      this.applyTransform(this.selected);
+      this.updateRing(this.selected);
+    }
+  },
+
+  onUp() {
+    if (this.dragging) {
+      this.dragging = false;
+      if (this.lookControls) this.cameraEl.setAttribute('look-controls', 'enabled', true);
+      this.save();
+    } else if (!this.moved) {
+      // 何もない所をクリック → 選択解除（オブジェクトにヒットしていない場合）
+      // onDown で select されていなければ deselect
+      if (!this._justSelected) this.deselect();
+    }
+    this._justSelected = false;
+  },
+
+  isDescendant(root, obj) {
+    let o = obj;
+    while (o) { if (o === root) return true; o = o.parent; }
+    return false;
+  },
+
+  /* ---------- アイテム追加 ---------- */
+  randColor() {
+    const c = ['#6f8bff', '#ff6aa8', '#44ffd0', '#ffd166', '#b08bff', '#ff8c5a'];
+    return c[Math.floor(Math.random() * c.length)];
+  },
+
+  async handleFile(file) {
+    const name = file.name.toLowerCase();
+    if (!name.endsWith('.glb') && !name.endsWith('.gltf')) {
+      this.toast('対応形式は .glb / .gltf です');
+      return;
+    }
+    if (name.endsWith('.gltf')) {
+      this.toast('外部参照のない .glb を推奨します');
+    }
+    const buf = await file.arrayBuffer();
+    const modelId = 'm_' + Date.now() + '_' + Math.floor(Math.random() * 1e4);
+    await idbPut('models', modelId, { name: file.name, data: buf });
+    this.addItem({ kind: 'model', modelId, name: file.name });
+    this.toast(`「${file.name}」を追加しました`);
+  },
+
+  // source: {kind:'model', modelId, name} | {kind:'primitive', shape, color}
+  // transform 省略時は新規（自動フィット）
+  addItem(source, transform) {
+    const id = 'i_' + Date.now() + '_' + Math.floor(Math.random() * 1e4);
+    const isNew = !transform;
+    const t = transform || {
+      position: [0, 0, -6], rotation: 0, scale: 1
+    };
+
+    const el = document.createElement('a-entity');
+    el.setAttribute('position', t.position.join(' '));
+
+    if (source.kind === 'primitive') {
+      if (source.shape === 'box') {
+        el.setAttribute('geometry', 'primitive: box; width: 1; height: 1; depth: 1');
+      } else if (source.shape === 'sphere') {
+        el.setAttribute('geometry', 'primitive: sphere; radius: 0.6');
+      } else if (source.shape === 'torus') {
+        el.setAttribute('geometry', 'primitive: torus; radius: 0.55; radiusTubular: 0.16');
+      }
+      el.setAttribute('material',
+        `color: ${source.color}; roughness: 0.2; metalness: 0.6; emissive: ${source.color}; emissiveIntensity: 0.15`);
+    }
+
+    this.contentEl.appendChild(el);
+    const item = { id, el, source, position: t.position.slice(), rotation: t.rotation, scale: t.scale };
+    this.items.push(item);
+
+    if (source.kind === 'model') {
+      // gltf を blob から読み込む
+      idbGet('models', source.modelId).then((rec) => {
+        if (!rec) { this.toast('モデルデータが見つかりません'); return; }
+        const blob = new Blob([rec.data], { type: 'model/gltf-binary' });
+        const url = URL.createObjectURL(blob);
+        el.setAttribute('gltf-model', url);
+        el.addEventListener('model-loaded', () => {
+          if (isNew) this.autoFit(item);
+          else this.applyTransform(item);
+        }, { once: true });
+      });
+    }
+
+    if (isNew && source.kind === 'primitive') {
+      // 箱/球は床に乗せる
+      item.position[1] = source.shape === 'box' ? 0.5 : 0.6;
+    }
+    this.applyTransform(item);
+    this.select(item);
+    this.save();
+    return item;
+  },
+
+  // モデルのバウンディングボックスから ~1.6m に正規化し床に乗せる
+  autoFit(item) {
+    const obj = item.el.getObject3D('mesh') || item.el.object3D;
+    const box = new this.THREE.Box3().setFromObject(obj);
+    const size = new this.THREE.Vector3();
+    box.getSize(size);
+    const maxDim = Math.max(size.x, size.y, size.z) || 1;
+    const target = 1.6;
+    const fit = target / maxDim;
+    item.scale = fit;
+    // 底面を床に
+    const center = new this.THREE.Vector3();
+    box.getCenter(center);
+    item.position[1] = -box.min.y * fit; // スケール後の底を0に
+    this.applyTransform(item);
+    this.updateRing(item);
+    this.refreshInspector();
+    this.save();
+  },
+
+  applyTransform(item) {
+    item.el.setAttribute('position', item.position.join(' '));
+    item.el.setAttribute('rotation', `0 ${item.rotation} 0`);
+    item.el.object3D.scale.set(item.scale, item.scale, item.scale);
+  },
+
+  /* ---------- 選択 ---------- */
+  select(item) {
+    this.selected = item;
+    this._justSelected = true;
+    this.updateRing(item);
+    this.refreshInspector();
+    document.querySelector('#inspector').classList.add('show');
+  },
+
+  deselect() {
+    this.selected = null;
+    this.selectRing.setAttribute('visible', false);
+    document.querySelector('#inspector').classList.remove('show');
+  },
+
+  updateRing(item) {
+    if (!item) return;
+    // 足元にリング表示。半径はだいたいの大きさに合わせる
+    const r = Math.max(0.5, item.scale * 0.7);
+    this.selectRing.setAttribute('radius-inner', r);
+    this.selectRing.setAttribute('radius-outer', r + 0.13);
+    this.selectRing.setAttribute('position',
+      `${item.position[0]} 0.06 ${item.position[2]}`);
+    this.selectRing.setAttribute('visible', true);
+  },
+
+  refreshInspector() {
+    const it = this.selected; if (!it) return;
+    const name = it.source.kind === 'model'
+      ? (it.source.name || '3Dモデル')
+      : ({ box: '箱', sphere: '球', torus: '輪' }[it.source.shape] || '図形');
+    document.querySelector('#insp-name').textContent = name;
+    const setVal = (id, v) => document.querySelector(id).value = v;
+    setVal('#ctl-y', it.position[1]);
+    setVal('#ctl-rot', it.rotation);
+    setVal('#ctl-scale', it.scale);
+    document.querySelector('#val-y').textContent = it.position[1].toFixed(2);
+    document.querySelector('#val-rot').textContent = Math.round(it.rotation) + '°';
+    document.querySelector('#val-scale').textContent = it.scale.toFixed(2) + '×';
+  },
+
+  updateSelected(prop, v) {
+    const it = this.selected; if (!it) return;
+    if (prop === 'y') { it.position[1] = v; document.querySelector('#val-y').textContent = v.toFixed(2); }
+    if (prop === 'rot') { it.rotation = v; document.querySelector('#val-rot').textContent = Math.round(v) + '°'; }
+    if (prop === 'scale') { it.scale = v; document.querySelector('#val-scale').textContent = v.toFixed(2) + '×'; }
+    this.applyTransform(it);
+    this.updateRing(it);
+    this.saveDebounced();
+  },
+
+  /* ---------- 削除・複製・全消去 ---------- */
+  deleteSelected() {
+    const it = this.selected; if (!it) return;
+    it.el.parentNode.removeChild(it.el);
+    this.items = this.items.filter((x) => x !== it);
+    this.deselect();
+    this.save();
+  },
+
+  duplicateSelected() {
+    const it = this.selected; if (!it) return;
+    const t = {
+      position: [it.position[0] + 1.2, it.position[1], it.position[2]],
+      rotation: it.rotation, scale: it.scale
+    };
+    this.addItem(it.source, t);
+  },
+
+  async clearAll() {
+    if (!confirm('配置をすべて消去します。よろしいですか？')) return;
+    this.items.forEach((it) => it.el.parentNode && it.el.parentNode.removeChild(it.el));
+    this.items = [];
+    this.deselect();
+    await idbClear('scene');
+    await idbClear('models');
+    this.toast('すべて消去しました');
+  },
+
+  /* ---------- 保存・復元 ---------- */
+  serialize() {
+    return this.items.map((it) => ({
+      id: it.id, source: it.source,
+      position: it.position, rotation: it.rotation, scale: it.scale
+    }));
+  },
+  async save() { await idbPut('scene', 'layout', this.serialize()); },
+  saveDebounced() {
+    clearTimeout(this._saveT);
+    this._saveT = setTimeout(() => this.save(), 350);
+  },
+
+  async restore() {
+    const layout = await idbGet('scene', 'layout');
+    if (!layout || !layout.length) return;
+    layout.forEach((rec) => {
+      this.addItem(rec.source, {
+        position: rec.position, rotation: rec.rotation, scale: rec.scale
+      });
+    });
+    this.deselect();
+    this.toast(`保存された ${layout.length} 個を復元しました`);
+  },
+
+  toast(msg) {
+    const t = document.querySelector('#toast');
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(this._toastT);
+    this._toastT = setTimeout(() => t.classList.remove('show'), 2200);
+  }
+});
+</script>
 </body>
 </html>
