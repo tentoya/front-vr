@@ -16,7 +16,6 @@
     * { box-sizing: border-box; }
     body { margin: 0; font-family: -apple-system, "Hiragino Sans", sans-serif; }
 
-    /* ---- 上部ツールバー ---- */
     #toolbar {
       position: fixed; top: 14px; left: 14px; z-index: 100;
       display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
@@ -38,22 +37,23 @@
     .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
     .btn.danger { background: rgba(255, 90, 110, 0.2); border-color: rgba(255,90,110,0.4); }
     .btn.danger:hover { background: rgba(255, 90, 110, 0.4); }
+    .btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
     .divider { width: 1px; height: 22px; background: var(--panel-border); margin: 0 2px; }
 
-    /* ---- 右パネル（選択時） ---- */
-    #inspector {
-      position: fixed; top: 14px; right: 14px; z-index: 100;
-      width: 230px; display: none;
+    .panel {
+      position: fixed; z-index: 100; width: 230px;
       background: var(--panel-bg); backdrop-filter: blur(12px);
       border: 1px solid var(--panel-border); border-radius: 14px;
-      padding: 14px; color: var(--text);
+      padding: 14px; color: var(--text); display: none;
     }
-    #inspector.show { display: block; }
-    #inspector h3 {
+    .panel.show { display: block; }
+    #inspector { top: 14px; right: 14px; }
+    #room-panel { top: 72px; left: 14px; }
+    .panel h3 {
       margin: 0 0 10px; font-size: 13px; letter-spacing: 0.04em;
       display: flex; align-items: center; gap: 6px;
     }
-    #inspector h3 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+    .panel h3 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
     .field { margin-bottom: 12px; }
     .field label {
       display: flex; justify-content: space-between;
@@ -61,10 +61,9 @@
     }
     .field label .val { color: var(--text); }
     .field input[type=range] { width: 100%; accent-color: var(--accent); }
-    .insp-actions { display: flex; gap: 8px; margin-top: 4px; }
-    .insp-actions .btn { flex: 1; text-align: center; padding: 8px 0; }
+    .row { display: flex; gap: 8px; }
+    .row .btn { flex: 1; text-align: center; padding: 8px 0; }
 
-    /* ---- 下部ヒント ---- */
     #hint {
       position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%);
       z-index: 90; display: flex; gap: 8px; pointer-events: none; flex-wrap: wrap;
@@ -76,7 +75,6 @@
       padding: 6px 13px; border-radius: 999px; font-size: 12px;
     }
 
-    /* ---- ドロップオーバーレイ ---- */
     #drop {
       position: fixed; inset: 0; z-index: 200; display: none;
       align-items: center; justify-content: center;
@@ -88,7 +86,6 @@
     #drop .big { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
     #drop .sub { color: var(--text-dim); font-size: 14px; }
 
-    /* ---- トースト ---- */
     #toast {
       position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%);
       z-index: 300; background: var(--accent); color: #fff;
@@ -110,14 +107,38 @@
   <button class="btn" id="btn-add-sphere">● 球</button>
   <button class="btn" id="btn-add-torus">◯ 輪</button>
   <div class="divider"></div>
+  <button class="btn" id="btn-room">⚙ 部屋</button>
   <button class="btn danger" id="btn-clear">全消去</button>
 </div>
 
-<div id="inspector">
+<div id="room-panel" class="panel">
+  <h3><span class="dot"></span>部屋の設定</h3>
+  <div class="field">
+    <label>幅 <span class="val" id="val-w">18</span>m</label>
+    <input type="range" id="ctl-w" min="8" max="30" step="0.5" value="18" />
+  </div>
+  <div class="field">
+    <label>奥行き <span class="val" id="val-d">28</span>m</label>
+    <input type="range" id="ctl-d" min="8" max="42" step="0.5" value="28" />
+  </div>
+  <div class="field">
+    <label>高さ <span class="val" id="val-h">5.5</span>m</label>
+    <input type="range" id="ctl-h" min="3" max="8" step="0.1" value="5.5" />
+  </div>
+  <div class="field">
+    <label>テーマ</label>
+    <div class="row">
+      <button class="btn theme-btn active" data-theme="modern">モダン</button>
+      <button class="btn theme-btn" data-theme="wa">和</button>
+    </div>
+  </div>
+</div>
+
+<div id="inspector" class="panel">
   <h3><span class="dot"></span><span id="insp-name">オブジェクト</span></h3>
   <div class="field">
     <label>高さ (Y) <span class="val" id="val-y">0.0</span></label>
-    <input type="range" id="ctl-y" min="0" max="5" step="0.05" value="0" />
+    <input type="range" id="ctl-y" min="0" max="6" step="0.05" value="0" />
   </div>
   <div class="field">
     <label>回転 (Y) <span class="val" id="val-rot">0°</span></label>
@@ -127,7 +148,7 @@
     <label>大きさ <span class="val" id="val-scale">1.00×</span></label>
     <input type="range" id="ctl-scale" min="0.05" max="5" step="0.01" value="1" />
   </div>
-  <div class="insp-actions">
+  <div class="row">
     <button class="btn" id="btn-dup">複製</button>
     <button class="btn danger" id="btn-del">削除</button>
   </div>
@@ -149,72 +170,21 @@
 <!-- ===== 3D シーン ===== -->
 <a-scene
   background="color: #070912"
-  fog="type: exponential; color: #070912; density: 0.022"
+  fog="type: exponential; color: #070912; density: 0.018"
   vr-mode-ui="enabled: true"
   editor
 >
-  <!-- カメラ（入口） -->
   <a-entity id="rig" position="0 0 7">
-    <a-camera look-controls="reverseMouseDrag: false" wasd-controls="acceleration: 35; fly: false">
-    </a-camera>
+    <a-camera look-controls="reverseMouseDrag: false" wasd-controls="acceleration: 35; fly: false"></a-camera>
   </a-entity>
 
-  <!-- 環境光 -->
-  <a-light type="ambient" color="#23263f" intensity="1.1"></a-light>
-  <a-light type="directional" color="#aab4ff" intensity="0.7" position="3 8 4"></a-light>
-  <a-light type="point" color="#7788ff" intensity="2.4" position="0 5.5 -4" distance="18" decay="1.4"></a-light>
-  <a-light type="point" color="#ff6aa8" intensity="1.4" position="-7 4 -8" distance="14" decay="2"></a-light>
-  <a-light type="point" color="#44ffd0" intensity="1.4" position="7 4 -8" distance="14" decay="2"></a-light>
+  <!-- 部屋（JSで生成） -->
+  <a-entity id="room"></a-entity>
 
-  <!-- ===== 展示室 ===== -->
-  <!-- 床 -->
-  <a-box id="floor" position="0 -0.05 -6" width="18" depth="28" height="0.1"
-    material="color: #0d0f1e; roughness: 0.25; metalness: 0.6"></a-box>
-  <!-- 床グリッド -->
-  <a-entity position="0 0.011 -6" rotation="-90 0 0"
-    geometry="primitive: plane; width: 18; height: 28; segmentsWidth: 18; segmentsHeight: 28"
-    material="color: #4a5cff; opacity: 0.07; transparent: true; wireframe: true"></a-entity>
-
-  <!-- 天井 -->
-  <a-box position="0 5.5 -6" width="18" depth="28" height="0.1"
-    material="color: #080a16; roughness: 1"></a-box>
-  <!-- 壁（左右奥） -->
-  <a-box position="-9 2.7 -6" width="0.1" depth="28" height="5.5"
-    material="color: #0f1126; roughness: 0.8"></a-box>
-  <a-box position="9 2.7 -6" width="0.1" depth="28" height="5.5"
-    material="color: #0f1126; roughness: 0.8"></a-box>
-  <a-box position="0 2.7 -20" width="18" depth="0.1" height="5.5"
-    material="color: #0f1126; roughness: 0.8"></a-box>
-  <!-- 入口側の上枠だけ（開口は通れる） -->
-  <a-box position="0 5 8" width="18" depth="0.1" height="1"
-    material="color: #0f1126; roughness: 0.8"></a-box>
-
-  <!-- 天井ライン -->
-  <a-box position="0 5.46 -3" width="1" depth="12" height="0.02"
-    material="color: #aab4ff; emissive: #5566ff; emissiveIntensity: 0.9"></a-box>
-  <a-box position="0 5.46 -14" width="1" depth="8" height="0.02"
-    material="color: #aab4ff; emissive: #5566ff; emissiveIntensity: 0.9"></a-box>
-
-  <!-- 幅木・モールディング -->
-  <a-box position="-8.96 0.12 -6" width="0.06" depth="28" height="0.24"
-    material="color: #2a2f5a; metalness: 0.7"></a-box>
-  <a-box position="8.96 0.12 -6" width="0.06" depth="28" height="0.24"
-    material="color: #2a2f5a; metalness: 0.7"></a-box>
-
-  <!-- タイトル -->
-  <a-text value="MY GALLERY" position="0 4.4 -19.9"
-    align="center" color="#ccd2ff" width="10" opacity="0.85"></a-text>
-
-  <!-- 中央ステージ（配置ガイド） -->
-  <a-cylinder position="0 0.03 -6" radius="2.4" height="0.06"
-    material="color: #1a1f44; roughness: 0.2; metalness: 0.8; opacity: 0.6; transparent: true"></a-cylinder>
-  <a-ring position="0 0.05 -6" radius-inner="2.35" radius-outer="2.5" rotation="-90 0 0"
-    material="color: #6f8bff; emissive: #6f8bff; emissiveIntensity: 0.5; opacity: 0.6; transparent: true"></a-ring>
-
-  <!-- 編集対象を入れるコンテナ -->
+  <!-- 編集対象 -->
   <a-entity id="content"></a-entity>
 
-  <!-- 選択ハイライト用リング -->
+  <!-- 選択ハイライト -->
   <a-ring id="select-ring" visible="false" radius-inner="0.55" radius-outer="0.68"
     rotation="-90 0 0"
     material="color: #ffd166; emissive: #ffd166; emissiveIntensity: 0.8; side: double; opacity: 0.9; transparent: true"
@@ -222,13 +192,9 @@
 </a-scene>
 
 <script>
-/* =====================================================================
-   IndexedDB: モデルバイナリ(models) と 配置データ(scene) を保存
-   ===================================================================== */
-const DB_NAME = 'vr-gallery';
-const DB_VER = 1;
+/* ===== IndexedDB ===== */
+const DB_NAME = 'vr-gallery', DB_VER = 1;
 let _db = null;
-
 function openDB() {
   return new Promise((resolve, reject) => {
     if (_db) return resolve(_db);
@@ -242,124 +208,84 @@ function openDB() {
     req.onerror = () => reject(req.error);
   });
 }
-async function idbPut(store, key, val) {
-  const db = await openDB();
-  return new Promise((res, rej) => {
-    const tx = db.transaction(store, 'readwrite');
-    tx.objectStore(store).put(val, key);
-    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
-  });
-}
-async function idbGet(store, key) {
-  const db = await openDB();
-  return new Promise((res, rej) => {
-    const tx = db.transaction(store, 'readonly');
-    const r = tx.objectStore(store).get(key);
-    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
-  });
-}
-async function idbDel(store, key) {
-  const db = await openDB();
-  return new Promise((res, rej) => {
-    const tx = db.transaction(store, 'readwrite');
-    tx.objectStore(store).delete(key);
-    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
-  });
-}
-async function idbClear(store) {
-  const db = await openDB();
-  return new Promise((res, rej) => {
-    const tx = db.transaction(store, 'readwrite');
-    tx.objectStore(store).clear();
-    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
-  });
-}
+async function idbPut(s, k, v) { const db = await openDB(); return new Promise((res, rej) => { const tx = db.transaction(s, 'readwrite'); tx.objectStore(s).put(v, k); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); }
+async function idbGet(s, k) { const db = await openDB(); return new Promise((res, rej) => { const tx = db.transaction(s, 'readonly'); const r = tx.objectStore(s).get(k); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
+async function idbDel(s, k) { const db = await openDB(); return new Promise((res, rej) => { const tx = db.transaction(s, 'readwrite'); tx.objectStore(s).delete(k); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); }
+async function idbClear(s) { const db = await openDB(); return new Promise((res, rej) => { const tx = db.transaction(s, 'readwrite'); tx.objectStore(s).clear(); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); }
 
-/* =====================================================================
-   A-Frame エディタコンポーネント
-   ===================================================================== */
+const ROOM_CZ = -6; // 部屋の中心Z（固定）
+
+/* ===== エディタ ===== */
 AFRAME.registerComponent('editor', {
   init() {
     this.THREE = AFRAME.THREE;
     this.sceneEl = this.el;
+    this.roomEl = document.querySelector('#room');
     this.contentEl = document.querySelector('#content');
     this.cameraEl = document.querySelector('a-camera');
     this.lookControls = null;
     this.selectRing = document.querySelector('#select-ring');
 
-    this.items = [];           // {id, el, source, position, rotation, scale}
-    this.selected = null;      // item
+    this.room = { w: 18, d: 28, h: 5.5, theme: 'modern' };
+    this.items = [];
+    this.selected = null;
     this.dragging = false;
     this.downPos = { x: 0, y: 0 };
     this.moved = false;
 
     this.raycaster = new this.THREE.Raycaster();
     this.mouse = new this.THREE.Vector2();
-    this.boxHelper = null;
-
     this.canvas = this.sceneEl.canvas || this.sceneEl.renderer.domElement;
+
     this.bindUI();
     this.bindCanvas();
-
-    // シーン復元
     this.el.sceneEl.addEventListener('loaded', () => {
       this.lookControls = this.cameraEl.components['look-controls'];
       this.restore();
     });
   },
 
-  /* ---------- UI バインド ---------- */
+  mk(parent, tag, attrs) {
+    const e = document.createElement(tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    parent.appendChild(e);
+    return e;
+  },
+
+  /* ---------- UI ---------- */
   bindUI() {
     const $ = (s) => document.querySelector(s);
-
     $('#btn-upload').onclick = () => $('#file-input').click();
-    $('#file-input').onchange = (e) => {
-      [...e.target.files].forEach((f) => this.handleFile(f));
-      e.target.value = '';
-    };
-
-    $('#btn-add-box').onclick = () =>
-      this.addItem({ kind: 'primitive', shape: 'box', color: this.randColor() });
-    $('#btn-add-sphere').onclick = () =>
-      this.addItem({ kind: 'primitive', shape: 'sphere', color: this.randColor() });
-    $('#btn-add-torus').onclick = () =>
-      this.addItem({ kind: 'primitive', shape: 'torus', color: this.randColor() });
-
+    $('#file-input').onchange = (e) => { [...e.target.files].forEach((f) => this.handleFile(f)); e.target.value = ''; };
+    $('#btn-add-box').onclick = () => this.addItem({ kind: 'primitive', shape: 'box', color: this.randColor() });
+    $('#btn-add-sphere').onclick = () => this.addItem({ kind: 'primitive', shape: 'sphere', color: this.randColor() });
+    $('#btn-add-torus').onclick = () => this.addItem({ kind: 'primitive', shape: 'torus', color: this.randColor() });
     $('#btn-clear').onclick = () => this.clearAll();
     $('#btn-del').onclick = () => this.deleteSelected();
     $('#btn-dup').onclick = () => this.duplicateSelected();
 
-    // インスペクタのスライダー
+    $('#btn-room').onclick = () => $('#room-panel').classList.toggle('show');
+    $('#ctl-w').oninput = (e) => this.setRoomDim('w', parseFloat(e.target.value));
+    $('#ctl-d').oninput = (e) => this.setRoomDim('d', parseFloat(e.target.value));
+    $('#ctl-h').oninput = (e) => this.setRoomDim('h', parseFloat(e.target.value));
+    document.querySelectorAll('.theme-btn').forEach((b) => b.onclick = () => this.setTheme(b.dataset.theme));
+
     $('#ctl-y').oninput = (e) => this.updateSelected('y', parseFloat(e.target.value));
     $('#ctl-rot').oninput = (e) => this.updateSelected('rot', parseFloat(e.target.value));
     $('#ctl-scale').oninput = (e) => this.updateSelected('scale', parseFloat(e.target.value));
 
-    // ドラッグ＆ドロップ
-    const drop = $('#drop');
-    let dragDepth = 0;
-    window.addEventListener('dragenter', (e) => {
-      e.preventDefault(); dragDepth++; drop.classList.add('show');
-    });
+    const drop = $('#drop'); let depth = 0;
+    window.addEventListener('dragenter', (e) => { e.preventDefault(); depth++; drop.classList.add('show'); });
     window.addEventListener('dragover', (e) => e.preventDefault());
-    window.addEventListener('dragleave', (e) => {
-      dragDepth--; if (dragDepth <= 0) { dragDepth = 0; drop.classList.remove('show'); }
-    });
-    window.addEventListener('drop', (e) => {
-      e.preventDefault(); dragDepth = 0; drop.classList.remove('show');
-      [...e.dataTransfer.files].forEach((f) => this.handleFile(f));
-    });
+    window.addEventListener('dragleave', () => { depth--; if (depth <= 0) { depth = 0; drop.classList.remove('show'); } });
+    window.addEventListener('drop', (e) => { e.preventDefault(); depth = 0; drop.classList.remove('show'); [...e.dataTransfer.files].forEach((f) => this.handleFile(f)); });
 
-    // Deleteキー
     window.addEventListener('keydown', (e) => {
-      if ((e.key === 'Delete' || e.key === 'Backspace') && this.selected
-          && document.activeElement.tagName !== 'INPUT') {
-        this.deleteSelected();
-      }
+      if ((e.key === 'Delete' || e.key === 'Backspace') && this.selected && document.activeElement.tagName !== 'INPUT') this.deleteSelected();
       if (e.key === 'Escape') this.deselect();
     });
   },
 
-  /* ---------- キャンバスのマウス操作 ---------- */
   bindCanvas() {
     const c = this.canvas;
     c.addEventListener('mousedown', (e) => this.onDown(e));
@@ -378,43 +304,34 @@ AFRAME.registerComponent('editor', {
     this.setMouse(e);
     this.downPos = { x: e.clientX, y: e.clientY };
     this.moved = false;
-
     const cam = this.cameraEl.getObject3D('camera');
     this.raycaster.setFromCamera(this.mouse, cam);
-
-    // 編集対象との交差を判定
     const roots = this.items.map((it) => it.el.object3D).filter(Boolean);
     const hits = this.raycaster.intersectObjects(roots, true);
-
     if (hits.length) {
-      // どの item か特定
-      let obj = hits[0].object;
-      const item = this.items.find((it) => this.isDescendant(it.el.object3D, obj));
+      const item = this.items.find((it) => this.isDescendant(it.el.object3D, hits[0].object));
       if (item) {
         this.select(item);
         this.dragging = true;
-        if (this.lookControls) this.cameraEl.setAttribute('look-controls', 'enabled', false);
+        this.cameraEl.setAttribute('look-controls', 'enabled', false);
       }
     }
   },
 
   onMove(e) {
-    if (Math.abs(e.clientX - this.downPos.x) + Math.abs(e.clientY - this.downPos.y) > 3) {
-      this.moved = true;
-    }
+    if (Math.abs(e.clientX - this.downPos.x) + Math.abs(e.clientY - this.downPos.y) > 3) this.moved = true;
     if (!this.dragging || !this.selected) return;
     this.setMouse(e);
     const cam = this.cameraEl.getObject3D('camera');
     this.raycaster.setFromCamera(this.mouse, cam);
-
-    // 現在の高さの水平面と交差させ XZ を決定
     const y = this.selected.position[1];
     const plane = new this.THREE.Plane(new this.THREE.Vector3(0, 1, 0), -y);
     const pt = new this.THREE.Vector3();
     if (this.raycaster.ray.intersectPlane(plane, pt)) {
-      // 床の範囲内にクランプ
-      pt.x = Math.max(-8.5, Math.min(8.5, pt.x));
-      pt.z = Math.max(-19.5, Math.min(7.5, pt.z));
+      const hw = this.room.w / 2 - 0.5;
+      const fr = ROOM_CZ + this.room.d / 2 - 0.6, bk = ROOM_CZ - this.room.d / 2 + 0.6;
+      pt.x = Math.max(-hw, Math.min(hw, pt.x));
+      pt.z = Math.max(bk, Math.min(fr, pt.z));
       this.selected.position[0] = pt.x;
       this.selected.position[2] = pt.z;
       this.applyTransform(this.selected);
@@ -425,37 +342,162 @@ AFRAME.registerComponent('editor', {
   onUp() {
     if (this.dragging) {
       this.dragging = false;
-      if (this.lookControls) this.cameraEl.setAttribute('look-controls', 'enabled', true);
+      this.cameraEl.setAttribute('look-controls', 'enabled', true);
       this.save();
-    } else if (!this.moved) {
-      // 何もない所をクリック → 選択解除（オブジェクトにヒットしていない場合）
-      // onDown で select されていなければ deselect
-      if (!this._justSelected) this.deselect();
+    } else if (!this.moved && !this._justSelected) {
+      this.deselect();
     }
     this._justSelected = false;
   },
 
-  isDescendant(root, obj) {
-    let o = obj;
-    while (o) { if (o === root) return true; o = o.parent; }
-    return false;
+  isDescendant(root, obj) { let o = obj; while (o) { if (o === root) return true; o = o.parent; } return false; },
+
+  /* ---------- 部屋の生成 ---------- */
+  reflectRoomUI() {
+    const set = (id, v) => { const el = document.querySelector(id); if (el) el.value = v; };
+    set('#ctl-w', this.room.w); set('#ctl-d', this.room.d); set('#ctl-h', this.room.h);
+    document.querySelector('#val-w').textContent = this.room.w;
+    document.querySelector('#val-d').textContent = this.room.d;
+    document.querySelector('#val-h').textContent = this.room.h;
+    document.querySelectorAll('.theme-btn').forEach((b) => b.classList.toggle('active', b.dataset.theme === this.room.theme));
   },
 
-  /* ---------- アイテム追加 ---------- */
-  randColor() {
-    const c = ['#6f8bff', '#ff6aa8', '#44ffd0', '#ffd166', '#b08bff', '#ff8c5a'];
-    return c[Math.floor(Math.random() * c.length)];
+  setRoomDim(p, v) {
+    this.room[p] = v;
+    document.querySelector('#val-' + p).textContent = v;
+    clearTimeout(this._rt);
+    this._rt = setTimeout(() => this.buildRoom(), 130);
+    this.saveRoom();
   },
+
+  setTheme(t) {
+    this.room.theme = t;
+    document.querySelectorAll('.theme-btn').forEach((b) => b.classList.toggle('active', b.dataset.theme === t));
+    this.sceneEl.setAttribute('background', 'color', t === 'wa' ? '#1a140e' : '#070912');
+    this.sceneEl.setAttribute('fog', 'color', t === 'wa' ? '#1a140e' : '#070912');
+    this.buildRoom();
+    this.saveRoom();
+  },
+
+  buildRoom() {
+    const { w, d, h, theme } = this.room;
+    const front = ROOM_CZ + d / 2, back = ROOM_CZ - d / 2;
+    const root = this.roomEl;
+    while (root.firstChild) root.removeChild(root.firstChild);
+    if (theme === 'wa') this.buildWa(w, d, h, front, back, root);
+    else this.buildModern(w, d, h, front, back, root);
+    // カメラを部屋の中に
+    const rig = document.querySelector('#rig');
+    const p = rig.getAttribute('position');
+    if (p.z > front - 0.8) rig.setAttribute('position', `${p.x} ${p.y} ${front - 1}`);
+  },
+
+  buildModern(w, d, h, front, back, root) {
+    const mk = this.mk.bind(this); const cz = ROOM_CZ;
+    mk(root, 'a-box', { position: `0 -0.05 ${cz}`, width: w, depth: d, height: 0.1, material: 'color:#0d0f1e;roughness:0.25;metalness:0.6' });
+    mk(root, 'a-entity', { position: `0 0.012 ${cz}`, rotation: '-90 0 0', geometry: `primitive:plane;width:${w};height:${d};segmentsWidth:${Math.round(w)};segmentsHeight:${Math.round(d)}`, material: 'color:#4a5cff;opacity:0.07;transparent:true;wireframe:true' });
+    mk(root, 'a-box', { position: `0 ${h} ${cz}`, width: w, depth: d, height: 0.1, material: 'color:#080a16;roughness:1' });
+    mk(root, 'a-box', { position: `${-w / 2} ${h / 2} ${cz}`, width: 0.1, depth: d, height: h, material: 'color:#0f1126;roughness:0.8' });
+    mk(root, 'a-box', { position: `${w / 2} ${h / 2} ${cz}`, width: 0.1, depth: d, height: h, material: 'color:#0f1126;roughness:0.8' });
+    mk(root, 'a-box', { position: `0 ${h / 2} ${back}`, width: w, depth: 0.1, height: h, material: 'color:#0f1126;roughness:0.8' });
+    mk(root, 'a-box', { position: `0 ${h - 0.5} ${front}`, width: w, depth: 0.1, height: 1, material: 'color:#0f1126;roughness:0.8' });
+    mk(root, 'a-box', { position: `0 ${h - 0.04} ${cz + 3}`, width: 1, depth: Math.min(12, d * 0.4), height: 0.02, material: 'color:#aab4ff;emissive:#5566ff;emissiveIntensity:0.9' });
+    mk(root, 'a-box', { position: `0 ${h - 0.04} ${cz - 5}`, width: 1, depth: Math.min(8, d * 0.3), height: 0.02, material: 'color:#aab4ff;emissive:#5566ff;emissiveIntensity:0.9' });
+    mk(root, 'a-box', { position: `${-w / 2 + 0.04} 0.12 ${cz}`, width: 0.06, depth: d, height: 0.24, material: 'color:#2a2f5a;metalness:0.7' });
+    mk(root, 'a-box', { position: `${w / 2 - 0.04} 0.12 ${cz}`, width: 0.06, depth: d, height: 0.24, material: 'color:#2a2f5a;metalness:0.7' });
+    mk(root, 'a-light', { type: 'ambient', color: '#23263f', intensity: 1.1 });
+    mk(root, 'a-light', { type: 'directional', color: '#aab4ff', intensity: 0.7, position: '3 8 4' });
+    mk(root, 'a-light', { type: 'point', color: '#7788ff', intensity: 2.4, position: `0 ${h} ${cz + 2}`, distance: 18, decay: 1.4 });
+    mk(root, 'a-light', { type: 'point', color: '#ff6aa8', intensity: 1.4, position: `${-w / 2 + 2} 4 ${cz - 2}`, distance: 14, decay: 2 });
+    mk(root, 'a-light', { type: 'point', color: '#44ffd0', intensity: 1.4, position: `${w / 2 - 2} 4 ${cz - 2}`, distance: 14, decay: 2 });
+    mk(root, 'a-cylinder', { position: `0 0.03 ${cz}`, radius: 2.4, height: 0.06, material: 'color:#1a1f44;roughness:0.2;metalness:0.8;opacity:0.6;transparent:true' });
+    mk(root, 'a-ring', { position: `0 0.05 ${cz}`, 'radius-inner': 2.35, 'radius-outer': 2.5, rotation: '-90 0 0', material: 'color:#6f8bff;emissive:#6f8bff;emissiveIntensity:0.5;opacity:0.6;transparent:true' });
+    mk(root, 'a-text', { value: 'MY GALLERY', position: `0 ${h - 1.1} ${back + 0.1}`, align: 'center', color: '#ccd2ff', width: 10, opacity: 0.85 });
+  },
+
+  buildWa(w, d, h, front, back, root) {
+    const mk = this.mk.bind(this); const cz = ROOM_CZ;
+    const wood = '#5a3d23', woodDark = '#3d2817', paper = '#efe7d2', tatami = '#9cab6e', border = '#2e2a1c', red = '#c0392b';
+    // 畳
+    mk(root, 'a-box', { position: `0 -0.05 ${cz}`, width: w, depth: d, height: 0.1, material: `color:${tatami};roughness:0.95` });
+    mk(root, 'a-entity', { position: `0 0.013 ${cz}`, rotation: '-90 0 0', geometry: `primitive:plane;width:${w};height:${d};segmentsWidth:${Math.max(2, Math.round(w / 1.8))};segmentsHeight:${Math.max(2, Math.round(d / 0.9))}`, material: `color:${border};opacity:0.55;transparent:true;wireframe:true` });
+    // 天井（板）
+    mk(root, 'a-box', { position: `0 ${h} ${cz}`, width: w, depth: d, height: 0.1, material: `color:${woodDark};roughness:1` });
+    for (let z = back + 1.2; z < front; z += 2.5)
+      mk(root, 'a-box', { position: `0 ${h - 0.12} ${z}`, width: w, depth: 0.16, height: 0.16, material: `color:${wood};roughness:0.8` });
+    // 障子壁
+    mk(root, 'a-box', { position: `${-w / 2} ${h / 2} ${cz}`, width: 0.08, depth: d, height: h, material: `color:${paper};roughness:1;emissive:${paper};emissiveIntensity:0.14` });
+    mk(root, 'a-box', { position: `${w / 2} ${h / 2} ${cz}`, width: 0.08, depth: d, height: h, material: `color:${paper};roughness:1;emissive:${paper};emissiveIntensity:0.14` });
+    mk(root, 'a-box', { position: `0 ${h / 2} ${back}`, width: w, depth: 0.08, height: h, material: `color:${paper};roughness:1;emissive:${paper};emissiveIntensity:0.14` });
+    mk(root, 'a-box', { position: `0 ${h - 0.4} ${front}`, width: w, depth: 0.16, height: 0.8, material: `color:${wood};roughness:0.7` });
+    // 格子
+    this.lattice(root, 'z', -w / 2 + 0.05, back, front, h, wood);
+    this.lattice(root, 'z', w / 2 - 0.05, back, front, h, wood);
+    this.lattice(root, 'x', back + 0.05, -w / 2, w / 2, h, wood);
+    // 柱
+    [[-w / 2, back], [w / 2, back], [-w / 2, front], [w / 2, front]].forEach(([x, z]) =>
+      mk(root, 'a-box', { position: `${x} ${h / 2} ${z}`, width: 0.22, depth: 0.22, height: h, material: `color:${wood};roughness:0.7` }));
+    // 鳥居
+    this.torii(root, front - 0.6, h, w, red);
+    // 照明（暖色）
+    mk(root, 'a-light', { type: 'ambient', color: '#4a3b2a', intensity: 1.25 });
+    mk(root, 'a-light', { type: 'directional', color: '#ffe8c0', intensity: 0.55, position: '2 8 4' });
+    mk(root, 'a-light', { type: 'point', color: '#ffb066', intensity: 2.2, position: `0 ${h - 0.6} ${cz + 2}`, distance: 18, decay: 1.4 });
+    mk(root, 'a-light', { type: 'point', color: '#ffcf9e', intensity: 1.7, position: `0 ${h - 0.6} ${cz - 5}`, distance: 16, decay: 1.6 });
+    // 提灯
+    [cz + 2, cz - 5].forEach((z) => {
+      mk(root, 'a-box', { position: `0 ${h - 0.45} ${z}`, width: 0.03, depth: 0.03, height: 0.3, material: 'color:#222' });
+      mk(root, 'a-cylinder', { position: `0 ${h - 0.95} ${z}`, radius: 0.32, height: 0.6, material: 'color:#ffdca0;emissive:#ffb866;emissiveIntensity:0.75;opacity:0.95;transparent:true' });
+    });
+    // 石灯籠
+    [[-w / 2 + 1.3, back + 1.3], [w / 2 - 1.3, back + 1.3]].forEach(([x, z]) => this.stoneLantern(root, x, z));
+    // 中央の木の台
+    mk(root, 'a-box', { position: `0 0.04 ${cz}`, width: 4, depth: 4, height: 0.08, material: `color:${wood};roughness:0.6;opacity:0.45;transparent:true` });
+    mk(root, 'a-text', { value: 'WA  GALLERY', position: `0 ${h - 1.0} ${back + 0.12}`, align: 'center', color: '#3d2817', width: 10, opacity: 0.9 });
+  },
+
+  lattice(root, axis, fixed, from, to, h, color) {
+    const mk = this.mk.bind(this); const step = 1.0;
+    if (axis === 'z') {
+      for (let z = from + 0.7; z < to - 0.3; z += step)
+        mk(root, 'a-box', { position: `${fixed} ${h / 2} ${z}`, width: 0.05, depth: 0.05, height: h * 0.96, material: `color:${color}` });
+      [0.33, 0.66].forEach((f) => mk(root, 'a-box', { position: `${fixed} ${h * f} ${(from + to) / 2}`, width: 0.05, height: 0.05, depth: (to - from), material: `color:${color}` }));
+    } else {
+      for (let x = from + 0.7; x < to - 0.3; x += step)
+        mk(root, 'a-box', { position: `${x} ${h / 2} ${fixed}`, width: 0.05, depth: 0.05, height: h * 0.96, material: `color:${color}` });
+      [0.33, 0.66].forEach((f) => mk(root, 'a-box', { position: `0 ${h * f} ${fixed}`, width: (to - from), height: 0.05, depth: 0.05, material: `color:${color}` }));
+    }
+  },
+
+  torii(root, z, h, w, color) {
+    const mk = this.mk.bind(this);
+    const px = Math.min(w * 0.28, w / 2 - 0.6);
+    const ph = Math.min(h * 0.92, h - 0.3);
+    const black = '#201a14';
+    mk(root, 'a-cylinder', { position: `${-px} ${ph / 2} ${z}`, radius: 0.16, height: ph, material: `color:${color};roughness:0.6` });
+    mk(root, 'a-cylinder', { position: `${px} ${ph / 2} ${z}`, radius: 0.16, height: ph, material: `color:${color};roughness:0.6` });
+    mk(root, 'a-box', { position: `0 ${ph + 0.06} ${z}`, width: px * 2 + 1.2, depth: 0.32, height: 0.22, material: `color:${black};roughness:0.6` });
+    mk(root, 'a-box', { position: `0 ${ph - 0.14} ${z}`, width: px * 2 + 0.7, depth: 0.24, height: 0.16, material: `color:${color};roughness:0.6` });
+    mk(root, 'a-box', { position: `0 ${ph * 0.62} ${z}`, width: px * 2 + 0.4, depth: 0.16, height: 0.16, material: `color:${color};roughness:0.6` });
+    mk(root, 'a-box', { position: `0 ${ph * 0.8} ${z}`, width: 0.16, depth: 0.1, height: ph * 0.32, material: `color:${color}` });
+  },
+
+  stoneLantern(root, x, z) {
+    const mk = this.mk.bind(this); const g = '#8a8a82';
+    mk(root, 'a-cylinder', { position: `${x} 0.15 ${z}`, radius: 0.28, height: 0.3, material: `color:${g};roughness:1` });
+    mk(root, 'a-box', { position: `${x} 0.45 ${z}`, width: 0.12, depth: 0.12, height: 0.4, material: `color:${g};roughness:1` });
+    mk(root, 'a-box', { position: `${x} 0.74 ${z}`, width: 0.42, depth: 0.42, height: 0.2, material: 'color:#9a9a90;emissive:#ffb066;emissiveIntensity:0.35' });
+    mk(root, 'a-box', { position: `${x} 0.92 ${z}`, width: 0.5, depth: 0.5, height: 0.12, material: `color:${g};roughness:1` });
+    mk(root, 'a-light', { type: 'point', color: '#ffb066', intensity: 0.5, position: `${x} 0.74 ${z}`, distance: 4, decay: 2 });
+  },
+
+  /* ---------- アイテム ---------- */
+  randColor() { const c = ['#6f8bff', '#ff6aa8', '#44ffd0', '#ffd166', '#b08bff', '#ff8c5a']; return c[Math.floor(Math.random() * c.length)]; },
 
   async handleFile(file) {
     const name = file.name.toLowerCase();
-    if (!name.endsWith('.glb') && !name.endsWith('.gltf')) {
-      this.toast('対応形式は .glb / .gltf です');
-      return;
-    }
-    if (name.endsWith('.gltf')) {
-      this.toast('外部参照のない .glb を推奨します');
-    }
+    if (!name.endsWith('.glb') && !name.endsWith('.gltf')) { this.toast('対応形式は .glb / .gltf です'); return; }
+    if (name.endsWith('.gltf')) this.toast('外部参照のない .glb を推奨します');
     const buf = await file.arrayBuffer();
     const modelId = 'm_' + Date.now() + '_' + Math.floor(Math.random() * 1e4);
     await idbPut('models', modelId, { name: file.name, data: buf });
@@ -463,76 +505,45 @@ AFRAME.registerComponent('editor', {
     this.toast(`「${file.name}」を追加しました`);
   },
 
-  // source: {kind:'model', modelId, name} | {kind:'primitive', shape, color}
-  // transform 省略時は新規（自動フィット）
   addItem(source, transform) {
     const id = 'i_' + Date.now() + '_' + Math.floor(Math.random() * 1e4);
     const isNew = !transform;
-    const t = transform || {
-      position: [0, 0, -6], rotation: 0, scale: 1
-    };
-
+    const t = transform || { position: [0, 0, ROOM_CZ], rotation: 0, scale: 1 };
     const el = document.createElement('a-entity');
     el.setAttribute('position', t.position.join(' '));
-
     if (source.kind === 'primitive') {
-      if (source.shape === 'box') {
-        el.setAttribute('geometry', 'primitive: box; width: 1; height: 1; depth: 1');
-      } else if (source.shape === 'sphere') {
-        el.setAttribute('geometry', 'primitive: sphere; radius: 0.6');
-      } else if (source.shape === 'torus') {
-        el.setAttribute('geometry', 'primitive: torus; radius: 0.55; radiusTubular: 0.16');
-      }
-      el.setAttribute('material',
-        `color: ${source.color}; roughness: 0.2; metalness: 0.6; emissive: ${source.color}; emissiveIntensity: 0.15`);
+      if (source.shape === 'box') el.setAttribute('geometry', 'primitive: box; width: 1; height: 1; depth: 1');
+      else if (source.shape === 'sphere') el.setAttribute('geometry', 'primitive: sphere; radius: 0.6');
+      else if (source.shape === 'torus') el.setAttribute('geometry', 'primitive: torus; radius: 0.55; radiusTubular: 0.16');
+      el.setAttribute('material', `color: ${source.color}; roughness: 0.2; metalness: 0.6; emissive: ${source.color}; emissiveIntensity: 0.15`);
     }
-
     this.contentEl.appendChild(el);
     const item = { id, el, source, position: t.position.slice(), rotation: t.rotation, scale: t.scale };
     this.items.push(item);
-
     if (source.kind === 'model') {
-      // gltf を blob から読み込む
       idbGet('models', source.modelId).then((rec) => {
         if (!rec) { this.toast('モデルデータが見つかりません'); return; }
-        const blob = new Blob([rec.data], { type: 'model/gltf-binary' });
-        const url = URL.createObjectURL(blob);
+        const url = URL.createObjectURL(new Blob([rec.data], { type: 'model/gltf-binary' }));
         el.setAttribute('gltf-model', url);
-        el.addEventListener('model-loaded', () => {
-          if (isNew) this.autoFit(item);
-          else this.applyTransform(item);
-        }, { once: true });
+        el.addEventListener('model-loaded', () => { if (isNew) this.autoFit(item); else this.applyTransform(item); }, { once: true });
       });
     }
-
-    if (isNew && source.kind === 'primitive') {
-      // 箱/球は床に乗せる
-      item.position[1] = source.shape === 'box' ? 0.5 : 0.6;
-    }
+    if (isNew && source.kind === 'primitive') item.position[1] = source.shape === 'box' ? 0.5 : 0.6;
     this.applyTransform(item);
     this.select(item);
     this.save();
     return item;
   },
 
-  // モデルのバウンディングボックスから ~1.6m に正規化し床に乗せる
   autoFit(item) {
     const obj = item.el.getObject3D('mesh') || item.el.object3D;
     const box = new this.THREE.Box3().setFromObject(obj);
-    const size = new this.THREE.Vector3();
-    box.getSize(size);
+    const size = new this.THREE.Vector3(); box.getSize(size);
     const maxDim = Math.max(size.x, size.y, size.z) || 1;
-    const target = 1.6;
-    const fit = target / maxDim;
+    const fit = 1.6 / maxDim;
     item.scale = fit;
-    // 底面を床に
-    const center = new this.THREE.Vector3();
-    box.getCenter(center);
-    item.position[1] = -box.min.y * fit; // スケール後の底を0に
-    this.applyTransform(item);
-    this.updateRing(item);
-    this.refreshInspector();
-    this.save();
+    item.position[1] = -box.min.y * fit;
+    this.applyTransform(item); this.updateRing(item); this.refreshInspector(); this.save();
   },
 
   applyTransform(item) {
@@ -542,41 +553,24 @@ AFRAME.registerComponent('editor', {
   },
 
   /* ---------- 選択 ---------- */
-  select(item) {
-    this.selected = item;
-    this._justSelected = true;
-    this.updateRing(item);
-    this.refreshInspector();
-    document.querySelector('#inspector').classList.add('show');
-  },
-
-  deselect() {
-    this.selected = null;
-    this.selectRing.setAttribute('visible', false);
-    document.querySelector('#inspector').classList.remove('show');
-  },
+  select(item) { this.selected = item; this._justSelected = true; this.updateRing(item); this.refreshInspector(); document.querySelector('#inspector').classList.add('show'); },
+  deselect() { this.selected = null; this.selectRing.setAttribute('visible', false); document.querySelector('#inspector').classList.remove('show'); },
 
   updateRing(item) {
     if (!item) return;
-    // 足元にリング表示。半径はだいたいの大きさに合わせる
     const r = Math.max(0.5, item.scale * 0.7);
     this.selectRing.setAttribute('radius-inner', r);
     this.selectRing.setAttribute('radius-outer', r + 0.13);
-    this.selectRing.setAttribute('position',
-      `${item.position[0]} 0.06 ${item.position[2]}`);
+    this.selectRing.setAttribute('position', `${item.position[0]} 0.06 ${item.position[2]}`);
     this.selectRing.setAttribute('visible', true);
   },
 
   refreshInspector() {
     const it = this.selected; if (!it) return;
-    const name = it.source.kind === 'model'
-      ? (it.source.name || '3Dモデル')
-      : ({ box: '箱', sphere: '球', torus: '輪' }[it.source.shape] || '図形');
+    const name = it.source.kind === 'model' ? (it.source.name || '3Dモデル') : ({ box: '箱', sphere: '球', torus: '輪' }[it.source.shape] || '図形');
     document.querySelector('#insp-name').textContent = name;
-    const setVal = (id, v) => document.querySelector(id).value = v;
-    setVal('#ctl-y', it.position[1]);
-    setVal('#ctl-rot', it.rotation);
-    setVal('#ctl-scale', it.scale);
+    const set = (id, v) => document.querySelector(id).value = v;
+    set('#ctl-y', it.position[1]); set('#ctl-rot', it.rotation); set('#ctl-scale', it.scale);
     document.querySelector('#val-y').textContent = it.position[1].toFixed(2);
     document.querySelector('#val-rot').textContent = Math.round(it.rotation) + '°';
     document.querySelector('#val-scale').textContent = it.scale.toFixed(2) + '×';
@@ -587,70 +581,46 @@ AFRAME.registerComponent('editor', {
     if (prop === 'y') { it.position[1] = v; document.querySelector('#val-y').textContent = v.toFixed(2); }
     if (prop === 'rot') { it.rotation = v; document.querySelector('#val-rot').textContent = Math.round(v) + '°'; }
     if (prop === 'scale') { it.scale = v; document.querySelector('#val-scale').textContent = v.toFixed(2) + '×'; }
-    this.applyTransform(it);
-    this.updateRing(it);
-    this.saveDebounced();
+    this.applyTransform(it); this.updateRing(it); this.saveDebounced();
   },
 
-  /* ---------- 削除・複製・全消去 ---------- */
-  deleteSelected() {
-    const it = this.selected; if (!it) return;
-    it.el.parentNode.removeChild(it.el);
-    this.items = this.items.filter((x) => x !== it);
-    this.deselect();
-    this.save();
-  },
-
-  duplicateSelected() {
-    const it = this.selected; if (!it) return;
-    const t = {
-      position: [it.position[0] + 1.2, it.position[1], it.position[2]],
-      rotation: it.rotation, scale: it.scale
-    };
-    this.addItem(it.source, t);
-  },
+  /* ---------- 操作 ---------- */
+  deleteSelected() { const it = this.selected; if (!it) return; it.el.parentNode.removeChild(it.el); this.items = this.items.filter((x) => x !== it); this.deselect(); this.save(); },
+  duplicateSelected() { const it = this.selected; if (!it) return; this.addItem(it.source, { position: [it.position[0] + 1.2, it.position[1], it.position[2]], rotation: it.rotation, scale: it.scale }); },
 
   async clearAll() {
-    if (!confirm('配置をすべて消去します。よろしいですか？')) return;
+    if (!confirm('配置したオブジェクトをすべて消去します。よろしいですか？')) return;
     this.items.forEach((it) => it.el.parentNode && it.el.parentNode.removeChild(it.el));
-    this.items = [];
-    this.deselect();
-    await idbClear('scene');
-    await idbClear('models');
-    this.toast('すべて消去しました');
+    this.items = []; this.deselect();
+    await idbDel('scene', 'layout'); await idbClear('models');
+    this.toast('配置を消去しました');
   },
 
   /* ---------- 保存・復元 ---------- */
-  serialize() {
-    return this.items.map((it) => ({
-      id: it.id, source: it.source,
-      position: it.position, rotation: it.rotation, scale: it.scale
-    }));
-  },
+  serialize() { return this.items.map((it) => ({ id: it.id, source: it.source, position: it.position, rotation: it.rotation, scale: it.scale })); },
   async save() { await idbPut('scene', 'layout', this.serialize()); },
-  saveDebounced() {
-    clearTimeout(this._saveT);
-    this._saveT = setTimeout(() => this.save(), 350);
-  },
+  saveDebounced() { clearTimeout(this._saveT); this._saveT = setTimeout(() => this.save(), 350); },
+  async saveRoom() { await idbPut('scene', 'room', this.room); },
 
   async restore() {
+    const r = await idbGet('scene', 'room');
+    if (r) Object.assign(this.room, r);
+    this.reflectRoomUI();
+    this.sceneEl.setAttribute('background', 'color', this.room.theme === 'wa' ? '#1a140e' : '#070912');
+    this.sceneEl.setAttribute('fog', 'color', this.room.theme === 'wa' ? '#1a140e' : '#070912');
+    this.buildRoom();
+
     const layout = await idbGet('scene', 'layout');
-    if (!layout || !layout.length) return;
-    layout.forEach((rec) => {
-      this.addItem(rec.source, {
-        position: rec.position, rotation: rec.rotation, scale: rec.scale
-      });
-    });
-    this.deselect();
-    this.toast(`保存された ${layout.length} 個を復元しました`);
+    if (layout && layout.length) {
+      layout.forEach((rec) => this.addItem(rec.source, { position: rec.position, rotation: rec.rotation, scale: rec.scale }));
+      this.deselect();
+      this.toast(`保存された ${layout.length} 個を復元しました`);
+    } else {
+      this.deselect();
+    }
   },
 
-  toast(msg) {
-    const t = document.querySelector('#toast');
-    t.textContent = msg; t.classList.add('show');
-    clearTimeout(this._toastT);
-    this._toastT = setTimeout(() => t.classList.remove('show'), 2200);
-  }
+  toast(msg) { const t = document.querySelector('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(this._toastT); this._toastT = setTimeout(() => t.classList.remove('show'), 2200); }
 });
 </script>
 </body>
